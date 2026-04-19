@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お気に入りレシピ集 — Favorite Recipes</title>
+  <style>
+    :root {
+      --bg: #fdf8f3;
+      --card: #ffffff;
+      --ink: #2b2b2b;
+      --accent: #c0532b;
+      --accent-soft: #fbe7dc;
+      --muted: #6b6b6b;
+      --border: #e4dbcf;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Hiragino Sans", "Yu Gothic", "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      margin: 0;
+      line-height: 1.7;
+    }
+    header {
+      background: linear-gradient(135deg, #c0532b 0%, #e07a4d 100%);
+      color: #fff;
+      padding: 48px 24px 32px;
+      text-align: center;
+    }
+    header h1 { margin: 0; font-size: 2rem; letter-spacing: 0.05em; }
+    header p { margin: 8px 0 0; opacity: 0.9; font-size: 0.95rem; }
+
+    .controls {
+      max-width: 960px;
+      margin: 24px auto 0;
+      padding: 0 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .controls input[type="search"] {
+      flex: 1 1 220px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    .controls input[type="search"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .chip.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    main {
+      max-width: 960px;
+      margin: 24px auto 48px;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .recipe {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .recipe:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(192, 83, 43, 0.12);
+    }
+    .recipe-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .recipe h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: var(--accent);
+    }
+    .fav-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: #ccc;
+      padding: 0;
+    }
+    .fav-btn.on { color: #e6b422; }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .meta span {
+      background: var(--accent-soft);
+      color: var(--accent);
+      padding: 2px 10px;
+      border-radius: 999px;
+    }
+    .recipe h3 {
+      margin: 4px 0 4px;
+      font-size: 0.95rem;
+      color: #444;
+      border-left: 3px solid var(--accent);
+      padding-left: 8px;
+    }
+    .recipe ul, .recipe ol {
+      margin: 0 0 8px;
+      padding-left: 20px;
+      font-size: 0.92rem;
+    }
+    .note {
+      background: #fff8ec;
+      border-left: 3px solid #e6b422;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      color: #6b5500;
+      border-radius: 4px;
+    }
+    footer {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+      padding: 24px 16px 40px;
+      border-top: 1px solid var(--border);
+    }
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 40px 16px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>お気に入りレシピ集</h1>
+    <p>家で何度も作りたくなる、定番の味をまとめました</p>
+  </header>
+
+  <div class="controls" role="search">
+    <input type="search" id="searchInput" placeholder="レシピ名・材料で検索（例：鶏、味噌）" aria-label="レシピ検索">
+    <div class="chip-group" id="categoryChips" aria-label="カテゴリ絞り込み">
+      <button class="chip active" data-cat="all">すべて</button>
+      <button class="chip" data-cat="main">メイン</button>
+      <button class="chip" data-cat="side">副菜</button>
+      <button class="chip" data-cat="sweets">スイーツ</button>
+    </div>
+  </div>
+
+  <main id="recipeGrid">
+    <article class="recipe" data-cat="main" data-keywords="鶏 唐揚げ もも肉 醤油 にんにく">
+      <div class="recipe-header">
+        <h2>鶏のからあげ</h2>
+        <button class="fav-btn" aria-label="お気に入り">★</button>
+      </div>
+      <div class="meta">
+        <span>メイン</span><span>調理 25分</span><span>2人分</span>
+      </div>
+      <section>
+        <h3>材料</h3>
+        <ul>
+          <li>鶏もも肉 … 300g</li>
+          <li>醤油 … 大さじ2</li>
+          <li>酒 … 大さじ1</li>
+          <li>おろしにんにく・生姜 … 各小さじ1</li>
+          <li>片栗粉 … 大さじ4</li>
+          <li>揚げ油 … 適量</li>
+        </ul>
+      </section>
+      <section>
+        <h3>作り方</h3>
+        <ol>
+          <li>鶏もも肉を一口大に切る。</li>
+          <li>ポリ袋に醤油・酒・にんにく・生姜と鶏肉を入れ、10分漬け込む。</li>
+          <li>片栗粉をまぶし、170℃の油で4分揚げる。</li>
+          <li>一度取り出し、190℃で1分二度揚げしてカリッと仕上げる。</li>
+        </ol>
+      </section>
+      <p class="note">メモ: 二度揚げがサクサクの決め手。レモンを添えると◎。</p>
+    </article>
+
+    <article class="recipe" data-cat="main" data-keywords="豚 生姜焼き しょうが ロース">
+      <div class="recipe-header">
+        <h2>豚の生姜焼き</h2>
+        <button class="fav-btn" aria-label="お気に入り">★</button>
+      </div>
+      <div class="meta">
+        <span>メイン</span><span>調理 15分</span><span>2人分</span>
+      </div>
+      <section>
+        <h3>材料</h3>
+        <ul>
+          <li>豚ロース薄切り … 250g</li>
+          <li>玉ねぎ … 1/2個</li>
+          <li>おろし生姜 … 大さじ1</li>
+          <li>醤油・みりん・酒 … 各大さじ2</li>
+          <li>砂糖 … 小さじ1</li>
+          <li>サラダ油 … 大さじ1</li>
+        </ul>
+      </section>
+      <section>
+        <h3>作り方</h3>
+        <ol>
+          <li>玉ねぎは薄切り、調味料をすべて混ぜておく。</li>
+          <li>フライパンに油を熱し、豚肉と玉ねぎを炒める。</li>
+          <li>合わせ調味料を加え、汁気が少し残るまで煮絡める。</li>
+          <li>皿に盛り、千切りキャベツを添えて完成。</li>
+        </ol>
+      </section>
+      <p class="note">メモ: 豚肉に先に片栗粉を薄くまぶすと、タレの絡みが良くなる。</p>
+    </article>
+
+    <article class="recipe" data-cat="side" data-keywords="ほうれん草 お浸し だし 白ごま">
+      <div class="recipe-header">
+        <h2>ほうれん草のお浸し</h2>
+        <button class="fav-btn" aria-label="お気に入り">★</button>
+      </div>
+      <div class="meta">
+        <span>副菜</span><span>調理 10分</span><span>2人分</span>
+      </div>
+      <section>
+        <h3>材料</h3>
+        <ul>
+          <li>ほうれん草 … 1束</li>
+          <li>だし汁 … 100ml</li>
+          <li>醤油 … 大さじ1</li>
+          <li>みりん … 小さじ1</li>
+          <li>かつお節・白ごま … 各適量</li>
+        </ul>
+      </section>
+      <section>
+        <h3>作り方</h3>
+        <ol>
+          <li>ほうれん草を沸騰した湯で30秒茹で、冷水にとって水気を絞る。</li>
+          <li>4cm幅に切り、だし汁・醤油・みりんの合わせ地に15分浸す。</li>
+          <li>器に盛り、かつお節と白ごまを散らす。</li>
+        </ol>
+      </section>
+      <p class="note">メモ: 茹で時間は短めがコツ。鮮やかな緑が残る。</p>
+    </article>
+
+    <article class="recipe" data-cat="main" data-keywords="ミートソース パスタ トマト 玉ねぎ 合いびき">
+      <div class="recipe-header">
+        <h2>基本のミートソースパスタ</h2>
+        <button class="fav-btn" aria-label="お気に入り">★</button>
+      </div>
+      <div class="meta">
+        <span>メイン</span><span>調理 30分</span><span>2人分</span>
+      </div>
+      <section>
+        <h3>材料</h3>
+        <ul>
+          <li>合いびき肉 … 200g</li>
+          <li>玉ねぎ … 1個（みじん切り）</li>
+          <li>にんにく … 1片（みじん切り）</li>
+          <li>カットトマト缶 … 1缶（400g）</li>
+          <li>コンソメ … 小さじ2／砂糖 … 小さじ1</li>
+          <li>塩・黒こしょう … 適量</li>
+          <li>スパゲッティ … 200g</li>
+        </ul>
+      </section>
+      <section>
+        <h3>作り方</h3>
+        <ol>
+          <li>鍋にオリーブ油とにんにくを熱し、玉ねぎを飴色まで炒める。</li>
+          <li>ひき肉を加え、強火でしっかり焼き色を付ける。</li>
+          <li>トマト缶・コンソメ・砂糖を入れ、弱火で15分煮込む。</li>
+          <li>塩・黒こしょうで味を整える。</li>
+          <li>茹でたスパゲッティとソースを和え、皿に盛る。</li>
+        </ol>
+      </section>
+      <p class="note">メモ: ひき肉は触りすぎず、塊のまま焼くと香ばしさが出る。</p>
+    </article>
+
+    <article class="recipe" data-cat="sweets" data-keywords="バスクチーズケーキ クリームチーズ 焼き菓子">
+      <div class="recipe-header">
+        <h2>バスクチーズケーキ</h2>
+        <button class="fav-btn" aria-label="お気に入り">★</button>
+      </div>
+      <div class="meta">
+        <span>スイーツ</span><span>調理 50分</span><span>15cm型</span>
+      </div>
+      <section>
+        <h3>材料</h3>
+        <ul>
+          <li>クリームチーズ … 200g</li>
+          <li>グラニュー糖 … 70g</li>
+          <li>卵 … 2個</li>
+          <li>生クリーム … 200ml</li>
+          <li>薄力粉 … 大さじ1</li>
+        </ul>
+      </section>
+      <section>
+        <h3>作り方</h3>
+        <ol>
+          <li>オーブンを240℃に予熱する。</li>
+          <li>室温に戻したクリームチーズを滑らかに混ぜ、砂糖を加える。</li>
+          <li>溶き卵→生クリーム→薄力粉の順に加え、その都度よく混ぜる。</li>
+          <li>クッキングシートを敷いた型に流し、240℃で25分焼く。</li>
+          <li>表面がしっかり焦げたら取り出し、粗熱→冷蔵庫で半日冷やす。</li>
+        </ol>
+      </section>
+      <p class="note">メモ: 焼きすぎず、真ん中がわずかに揺れる状態で止めると濃厚に。</p>
+    </article>
+  </main>
+
+  <footer>
+    <p>Favorite Recipes — built with HTML / CSS / JavaScript, hosted on Vercel</p>
+  </footer>
+
+  <script>
+    (() => {
+      const search = document.getElementById('searchInput');
+      const chips = document.querySelectorAll('#categoryChips .chip');
+      const cards = document.querySelectorAll('.recipe');
+      const grid = document.getElementById('recipeGrid');
+      let activeCat = 'all';
+
+      function applyFilter() {
+        const q = search.value.trim().toLowerCase();
+        let visible = 0;
+        cards.forEach(card => {
+          const cat = card.dataset.cat;
+          const kw = (card.dataset.keywords + ' ' + card.textContent).toLowerCase();
+          const catOK = activeCat === 'all' || cat === activeCat;
+          const qOK = !q || kw.includes(q);
+          const show = catOK && qOK;
+          card.style.display = show ? '' : 'none';
+          if (show) visible++;
+        });
+        const existing = grid.querySelector('.empty-state');
+        if (visible === 0) {
+          if (!existing) {
+            const p = document.createElement('p');
+            p.className = 'empty-state';
+            p.textContent = '該当するレシピが見つかりませんでした。';
+            grid.appendChild(p);
+          }
+        } else if (existing) {
+          existing.remove();
+        }
+      }
+
+      search.addEventListener('input', applyFilter);
+      chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          chips.forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          activeCat = chip.dataset.cat;
+          applyFilter();
+        });
+      });
+
+      // お気に入り（ローカルストレージに保存）
+      const favKey = 'favRecipes';
+      const favs = new Set(JSON.parse(localStorage.getItem(favKey) || '[]'));
+      document.querySelectorAll('.recipe').forEach((card, idx) => {
+        const btn = card.querySelector('.fav-btn');
+        const id = 'r' + idx;
+        if (favs.has(id)) btn.classList.add('on');
+        btn.addEventListener('click', () => {
+          btn.classList.toggle('on');
+          if (btn.classList.contains('on')) favs.add(id); else favs.delete(id);
+          localStorage.setItem(favKey, JSON.stringify([...favs]));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
